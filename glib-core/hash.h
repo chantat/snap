@@ -190,11 +190,14 @@ public:
   bool IsKeyIdEqKeyN() const {return FreeKeys==0;}
 
   int AddKey(const TKey& Key);
+  int AddKey2(const TKey& Key);
   TDat& AddDatId(const TKey& Key){
     int KeyId=AddKey(Key); return KeyDatV[KeyId].Dat=KeyId;}
   TDat& AddDat(const TKey& Key){return KeyDatV[AddKey(Key)].Dat;}
   TDat& AddDat(const TKey& Key, const TDat& Dat){
     return KeyDatV[AddKey(Key)].Dat=Dat;}
+  int AddDat2(const TKey& Key, const TDat& Dat){
+    return AddKey2(Key);}
 
   void DelKey(const TKey& Key);
   bool DelIfKey(const TKey& Key){
@@ -208,6 +211,7 @@ public:
 
   const TKey& GetKey(const int& KeyId) const { return GetHashKeyDat(KeyId).Key;}
   int GetKeyId(const TKey& Key) const;
+  int GetKeyId2(const TKey& Key) const;
   /// Get an index of a random element. If the hash table has many deleted keys, this may take a long time.
   int GetRndKeyId(TRnd& Rnd) const;
   /// Get an index of a random element. If the hash table has many deleted keys, defrag the hash table first (that's why the function is non-const).
@@ -218,6 +222,7 @@ public:
     return (0<=KeyId)&&(KeyId<KeyDatV.Len())&&(KeyDatV[KeyId].HashCd!=-1);}
   const TDat& GetDat(const TKey& Key) const {return KeyDatV[GetKeyId(Key)].Dat;}
   TDat& GetDat(const TKey& Key){return KeyDatV[GetKeyId(Key)].Dat;}
+  int GetDat2(const TKey& Key) const {return GetKeyId2(Key);}
 //  TKeyDatP GetKeyDat(const int& KeyId) const {
 //    TKeyDat& KeyDat=GetHashKeyDat(KeyId);
 //    return TKeyDatP(KeyDat.Key, KeyDat.Dat);}
@@ -287,7 +292,9 @@ void THash<TKey, TDat, THashFunc>::Resize(){
     if (KeyDat.HashCd!=-1){
       const int PortN = abs(THashFunc::GetPrimHashCd(KeyDat.Key) % PortV.Len());
       KeyDat.Next=PortV[PortN];
+      // PONGTODO:
       PortV[PortN]=KeyId;
+      //PortV[PortN]=-1;
     }
   }
 }
@@ -324,6 +331,65 @@ void THash<TKey, TDat, THashFunc>::Clr(const bool& DoDel, const int& NoDelLim, c
 
 template<class TKey, class TDat, class THashFunc>
 int THash<TKey, TDat, THashFunc>::AddKey(const TKey& Key){
+  // Add to KeyDat Vec
+  /*
+  int KeyId=KeyDatV.Add(THKeyDat(-1, 0, Key));
+  return KeyId;
+  */
+
+  // Resize
+  /*if ((KeyDatV.Len()>2*PortV.Len())||PortV.Empty()){Resize();}
+  int KeyId=KeyDatV.Add(THKeyDat(-1, 0, Key));
+  return KeyId;*/
+
+  // First Hash
+  /*if ((KeyDatV.Len()>2*PortV.Len())||PortV.Empty()){Resize();}
+  const int PortN=abs(THashFunc::GetPrimHashCd(Key)%PortV.Len());
+  int KeyId=KeyDatV.Add(THKeyDat(-1, PortN, Key));
+  return KeyId;*/
+
+  // Second Hash
+  /*if ((KeyDatV.Len()>2*PortV.Len())||PortV.Empty()){Resize();}
+  const int PortN=abs(THashFunc::GetPrimHashCd(Key)%PortV.Len());
+  const int HashCd=abs(THashFunc::GetSecHashCd(Key));
+  int KeyId=KeyDatV.Add(THKeyDat(-1, PortN + HashCd, Key));
+  return KeyId;*/
+
+  // Get KeyId
+  /*
+  if ((KeyDatV.Len()>2*PortV.Len())||PortV.Empty()){Resize();}
+  const int PortN=abs(THashFunc::GetPrimHashCd(Key)%PortV.Len());
+  const int HashCd=abs(THashFunc::GetSecHashCd(Key));
+  int KeyId=PortV[PortN];
+  KeyId=KeyDatV.Add(THKeyDat(-1, HashCd + KeyId, Key));
+  return KeyId;*/
+
+  // Set KeyId
+  /*if ((KeyDatV.Len()>2*PortV.Len())||PortV.Empty()){Resize();}
+  const int PortN=abs(THashFunc::GetPrimHashCd(Key)%PortV.Len());
+  const int HashCd=abs(THashFunc::GetSecHashCd(Key));
+  int PrevKeyId=-1;
+  int KeyId=PortV[PortN];
+  if (KeyId==-1){
+    if (FFreeKeyId==-1){
+      KeyId=KeyDatV.Add(THKeyDat(-1, HashCd, Key));
+    } else {
+      KeyId=FFreeKeyId; FFreeKeyId=KeyDatV[FFreeKeyId].Next; FreeKeys--;
+      //KeyDatV[KeyId]=TKeyDat(-1, HashCd, Key); // slow version
+      KeyDatV[KeyId].Next=-1;
+      KeyDatV[KeyId].HashCd=HashCd;
+      KeyDatV[KeyId].Key=Key;
+      //KeyDatV[KeyId].Dat=TDat(); // already empty
+    }
+    if (PrevKeyId==-1){
+      PortV[PortN]=-1;
+    } else {
+      KeyDatV[PrevKeyId].Next=-1;
+    }
+  }
+  return KeyId;*/
+
+  // Search KeyId
   if ((KeyDatV.Len()>2*PortV.Len())||PortV.Empty()){Resize();}
   const int PortN=abs(THashFunc::GetPrimHashCd(Key)%PortV.Len());
   const int HashCd=abs(THashFunc::GetSecHashCd(Key));
@@ -351,6 +417,38 @@ int THash<TKey, TDat, THashFunc>::AddKey(const TKey& Key){
     }
   }
   return KeyId;
+}
+
+template<class TKey, class TDat, class THashFunc>
+int THash<TKey, TDat, THashFunc>::AddKey2(const TKey& Key){
+  if ((KeyDatV.Len()>2*PortV.Len())||PortV.Empty()){Resize();}
+  const int PortN=abs(THashFunc::GetPrimHashCd(Key)%PortV.Len());
+  const int HashCd=abs(THashFunc::GetSecHashCd(Key));
+  int PrevKeyId=-1;
+  int KeyId=PortV[PortN];
+  int counter = 0;
+  while ((KeyId!=-1) &&
+   !((KeyDatV[KeyId].HashCd==HashCd) && (KeyDatV[KeyId].Key==Key))){
+    PrevKeyId=KeyId; KeyId=KeyDatV[KeyId].Next; counter++;}
+
+  if (KeyId==-1){
+    if (FFreeKeyId==-1){
+      KeyId=KeyDatV.Add(THKeyDat(-1, HashCd, Key));
+    } else {
+      KeyId=FFreeKeyId; FFreeKeyId=KeyDatV[FFreeKeyId].Next; FreeKeys--;
+      //KeyDatV[KeyId]=TKeyDat(-1, HashCd, Key); // slow version
+      KeyDatV[KeyId].Next=-1;
+      KeyDatV[KeyId].HashCd=HashCd;
+      KeyDatV[KeyId].Key=Key;
+      //KeyDatV[KeyId].Dat=TDat(); // already empty
+    }
+    if (PrevKeyId==-1){
+      PortV[PortN]=KeyId;
+    } else {
+      KeyDatV[PrevKeyId].Next=KeyId;
+    }
+  }
+  return counter;
 }
 
 template<class TKey, class TDat, class THashFunc>
@@ -423,8 +521,21 @@ int THash<TKey, TDat, THashFunc>::GetKeyId(const TKey& Key) const {
   int KeyId=PortV[PortN];
   while ((KeyId!=-1) &&
    !((KeyDatV[KeyId].HashCd==HashCd) && (KeyDatV[KeyId].Key==Key))){
-    KeyId=KeyDatV[KeyId].Next;}
+   KeyId=KeyDatV[KeyId].Next; }
   return KeyId;
+}
+
+template<class TKey, class TDat, class THashFunc>
+int THash<TKey, TDat, THashFunc>::GetKeyId2(const TKey& Key) const {
+  if (PortV.Empty()){return -1;}
+  const int PortN=abs(THashFunc::GetPrimHashCd(Key)%PortV.Len());
+  const int HashCd=abs(THashFunc::GetSecHashCd(Key));
+  int KeyId=PortV[PortN];
+  int counter = 0;
+  while ((KeyId!=-1) &&
+   !((KeyDatV[KeyId].HashCd==HashCd) && (KeyDatV[KeyId].Key==Key))){
+    KeyId=KeyDatV[KeyId].Next;counter++;}
+  return counter;
 }
 
 template<class TKey, class TDat, class THashFunc>
@@ -867,6 +978,80 @@ TStrHash<TDat, TStringPool, THashFunc>& TStrHash<TDat, TStringPool, THashFunc>::
 
 template <class TDat, class TStringPool, class THashFunc>
 int TStrHash<TDat, TStringPool, THashFunc>::AddKey(const char *Key) {
+  // Add to KeyDat Vec
+  /*int KeyId = KeyDatV.Add(THKeyDat(-1, 0, 0));
+    return KeyId;*/
+
+  // Add to StringPool
+  /*if (Pool.Empty()) Pool = TStringPool::New();
+  const int StrId = Pool->AddStr(Key);
+  int KeyId = KeyDatV.Add(THKeyDat(-1, 0, StrId));
+  return KeyId;*/
+
+  // Resize
+  /*if (Pool.Empty()) Pool = TStringPool::New();
+  if ((AutoSizeP && KeyDatV.Len() > PortV.Len()) || PortV.Empty()) Resize();
+  const int StrId = Pool->AddStr(Key);
+  int KeyId = KeyDatV.Add(THKeyDat(-1, 0, StrId));
+  return KeyId;*/
+
+  // Hash
+  /*if (Pool.Empty()) Pool = TStringPool::New();
+  if ((AutoSizeP && KeyDatV.Len() > PortV.Len()) || PortV.Empty()) Resize();
+  const int PortN = abs(THashFunc::GetPrimHashCd(Key) % PortV.Len());
+  const int HashCd = abs(THashFunc::GetSecHashCd(Key));
+  const int StrId = Pool->AddStr(Key);
+  int KeyId = KeyDatV.Add(THKeyDat(-1, PortN + HashCd, StrId));
+  return KeyId;*/
+
+  // Get KeyId
+  /*if (Pool.Empty()) Pool = TStringPool::New();
+  if ((AutoSizeP && KeyDatV.Len() > PortV.Len()) || PortV.Empty()) Resize();
+  const int PortN = abs(THashFunc::GetPrimHashCd(Key) % PortV.Len());
+  const int HashCd = abs(THashFunc::GetSecHashCd(Key));
+  const int StrId = Pool->AddStr(Key);
+  int KeyId = PortV[PortN];
+  KeyId=KeyDatV.Add(THKeyDat(-1, HashCd + KeyId, StrId));
+  return KeyId;*/
+
+  // Set KeyId
+  /*if (Pool.Empty()) Pool = TStringPool::New();
+  if ((AutoSizeP && KeyDatV.Len() > PortV.Len()) || PortV.Empty()) Resize();
+  const int PortN = abs(THashFunc::GetPrimHashCd(Key) % PortV.Len());
+  const int HashCd = abs(THashFunc::GetSecHashCd(Key));
+  int PrevKeyId = -1;
+  int KeyId = PortV[PortN];
+  const int StrId = Pool->AddStr(Key);
+  KeyId = KeyDatV.Add(THKeyDat(-1, HashCd + KeyId, StrId));
+  if (PrevKeyId == -1) PortV[PortN] = KeyId;
+  else KeyDatV[PrevKeyId].Next = KeyId;
+  return KeyId;*/
+
+  // Search KeyId
+  /*if (Pool.Empty()) Pool = TStringPool::New();
+  if ((AutoSizeP && KeyDatV.Len() > PortV.Len()) || PortV.Empty()) Resize();
+  const int PortN = abs(THashFunc::GetPrimHashCd(Key) % PortV.Len());
+  const int HashCd = abs(THashFunc::GetSecHashCd(Key));
+  int PrevKeyId = -1;
+  int KeyId = PortV[PortN];
+  while (KeyId != -1) {
+    PrevKeyId = KeyId;  KeyId = KeyDatV[KeyId].Next; }
+  if (KeyId == -1) {
+    const int StrId = Pool->AddStr(Key);
+    if (FFreeKeyId == -1) {
+      KeyId = KeyDatV.Add(THKeyDat(-1, HashCd, StrId));
+    } else {
+      KeyId = FFreeKeyId;
+      FFreeKeyId = KeyDatV[FFreeKeyId].Next;
+      FreeKeys--;
+      KeyDatV[KeyId] = THKeyDat(-1, HashCd, StrId);
+    }
+    if (PrevKeyId == -1) PortV[PortN] = KeyId;
+    else KeyDatV[PrevKeyId].Next = KeyId;
+  }
+  return KeyId;*/
+
+  // Compare in StringPool
   if (Pool.Empty()) Pool = TStringPool::New();
   if ((AutoSizeP && KeyDatV.Len() > PortV.Len()) || PortV.Empty()) Resize();
   const int PortN = abs(THashFunc::GetPrimHashCd(Key) % PortV.Len());
