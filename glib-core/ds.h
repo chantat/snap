@@ -528,9 +528,14 @@ public:
     if (Vals==MxVals){Resize();} return Vals++;}
   /// Adds a new element at the end of the vector, after its current last element. ##TVec::Add1
   TSizeTy Add(const TVal& Val){ AssertR(MxVals!=-1, "This vector was obtained from TVecPool. Such vectors cannot change its size!");
-    if (Vals==MxVals){Resize();} ValT[Vals]=Val; return Vals++;}
+    if (Vals==MxVals){Resize();} ValT[Vals]=Val; return Vals++; }
   TSizeTy Add(TVal& Val){ AssertR(MxVals!=-1, "This vector was obtained from TVecPool. Such vectors cannot change its size!");
-    if (Vals==MxVals){Resize();} ValT[Vals]=Val; return Vals++;}
+    if (Vals==MxVals){Resize();} ValT[Vals]=Val; return Vals++; }
+  TSizeTy ParallelAdd(TVal& Val){
+    TSizeTy CurVals = Vals;
+    while (!__sync_bool_compare_and_swap(&Vals, CurVals, CurVals + 1)) { CurVals = Vals; }
+    ValT[CurVals]=Val;
+    return CurVals;}
   /// Adds element \c Val at the end of the vector. #TVec::Add2
   TSizeTy Add(const TVal& Val, const TSizeTy& ResizeLen){ AssertR(MxVals!=-1, "This vector was obtained from TVecPool. Such vectors cannot change its size!");
     if (Vals==MxVals){Resize(MxVals+ResizeLen);} ValT[Vals]=Val; return Vals++;}
