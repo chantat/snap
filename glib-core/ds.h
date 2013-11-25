@@ -532,8 +532,7 @@ public:
   TSizeTy Add(TVal& Val){ AssertR(MxVals!=-1, "This vector was obtained from TVecPool. Such vectors cannot change its size!");
     if (Vals==MxVals){Resize();} ValT[Vals]=Val; return Vals++; }
   TSizeTy ParallelAdd(TVal& Val){
-    TSizeTy CurVals = Vals;
-    while (!__sync_bool_compare_and_swap(&Vals, CurVals, CurVals + 1)) { CurVals = Vals; }
+    TSizeTy CurVals = __sync_fetch_and_add(&Vals, 1);
     ValT[CurVals]=Val;
     return CurVals;}
   /// Adds element \c Val at the end of the vector. #TVec::Add2
