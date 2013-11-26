@@ -541,6 +541,8 @@ public:
   /// Adds the elements of the vector \c ValV to the to end of the vector.
   TSizeTy AddV(const TVec<TVal, TSizeTy>& ValV);
   /// Adds element \c Val to a sorted vector. ##TVec::AddSorted
+  TSizeTy ParallelAddV(const TVec<TVal, TSizeTy>& ValV);
+  /// Adds element \c Val to a sorted vector. ##TVec::AddSorted
   TSizeTy AddSorted(const TVal& Val, const bool& Asc=true, const TSizeTy& _MxVals=-1);
   /// Adds element \c Val to a sorted vector. ##TVec::AddBackSorted
   TSizeTy AddBackSorted(const TVal& Val, const bool& Asc);
@@ -921,6 +923,15 @@ TSizeTy TVec<TVal, TSizeTy>::AddV(const TVec<TVal, TSizeTy>& ValV){
   AssertR(MxVals!=-1, "This vector was obtained from TVecPool. Such vectors cannot change its size!");
   for (TSizeTy ValN=0; ValN<ValV.Vals; ValN++){Add(ValV[ValN]);}
   return Len();
+}
+
+template <class TVal, class TSizeTy>
+TSizeTy TVec<TVal, TSizeTy>::ParallelAddV(const TVec<TVal, TSizeTy>& ValV){
+  TSizeTy CurVals = __sync_fetch_and_add(&Vals, ValV.Vals);
+  for (TSizeTy i = 0; i<ValV.Vals; i++) {
+    ValT[CurVals+i]=ValV[i];
+  }
+  return CurVals + ValV.Vals;
 }
 
 template <class TVal, class TSizeTy>
